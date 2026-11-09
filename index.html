@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meine Listen</title>
+
+<!-- Damit die App auf dem iPhone-Home-Bildschirm wie eine echte App aussieht -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Listen">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#d4ebfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1a2b" media="(prefers-color-scheme: dark)">
+
+<!-- ============================================================
+     TEIL 1: CSS = das AUSSEHEN (Farben, Abstände, Schrift)
+     ============================================================ -->
+<style>
+  /* Farben an einer Stelle, damit man sie leicht ändern kann */
+  :root {
+    --bg: #d4ebfb;        /* Hintergrund: Babyblau */
+    --card: #ffffff;      /* Liste und Eingabefelder: Weiß */
+    --text: #14213d;
+    --muted: #5b6b85;
+    --line: #c3dcf0;
+    --accent: #1e3a6e;    /* Akzente: Dunkelblau */
+    --on-accent: #ffffff; /* Schrift auf dunkelblauen Flächen */
+    --bar: #1e3a6e;       /* Reiter-Leiste: Dunkelblau */
+    --bar-text: #c9def3;
+    --danger: #b4483c;    /* Rot für fällige Erinnerungen */
+    --star: #d99a00;      /* Gelb für "wichtig" */
+
+    /* Farben der Kategorien: Hintergrund und Schrift */
+    --uni-bg: #dbe7ff;    --uni-fg: #1e3a8a;
+    --privat-bg: #dcf3e4; --privat-fg: #1f6b3a;
+    --arbeit-bg: #fdecc8; --arbeit-fg: #8a5300;
+  }
+  /* Dunkle Farben, wenn der Mac im Dunkelmodus ist */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1a2b;
+      --card: #15253b;
+      --text: #e6eef8;
+      --muted: #8fa3bf;
+      --line: #24364f;
+      --accent: #7fb8ec;
+      --on-accent: #0e1a2b;
+      --bar: #1d3557;
+      --bar-text: #a9c3e0;
+      --danger: #e07a6e;
+      --star: #f2c14e;
+      --uni-bg: #1f3357;    --uni-fg: #a9c8ff;
+      --privat-bg: #1d3a2a; --privat-fg: #9fdcb4;
+      --arbeit-bg: #3d2f14; --arbeit-fg: #f2c879;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 20px; color: var(--accent); }
+
+  /* Die zwei Reiter oben */
+  .tabs {
+    display: flex; gap: 4px; padding: 4px; margin-bottom: 20px;
+    background: var(--bar); border-radius: 12px;
+  }
+  .tab {
+    flex: 1; border: 0; background: transparent; color: var(--bar-text);
+    padding: 10px; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .tab.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .count { font-weight: 500; opacity: .75; margin-left: 6px; }
+
+  /* Eingabebereich */
+  #form { margin-bottom: 16px; }
+  .zeile { display: flex; gap: 8px; }
+  input, select {
+    font: inherit; padding: 12px 14px; min-width: 0;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--text);
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  #text { flex: 1; }
+  .add {
+    border: 0; background: var(--accent); color: var(--on-accent); cursor: pointer;
+    font: inherit; font-weight: 600; padding: 0 18px; border-radius: 10px;
+  }
+
+  /* Zusatz-Optionen unter dem Eingabefeld (nur bei To-dos) */
+  .optionen { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 10px; }
+  .option {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .option svg { width: 16px; height: 16px; flex: none; }
+  .option input, .option select { padding: 8px 10px; font-size: 14px; font-weight: 400; }
+  .option input[type=checkbox] { width: 18px; height: 18px; padding: 0; accent-color: var(--accent); }
+  #wichtig:checked + svg { fill: currentColor; color: var(--star); }
+
+  /* Filter nach Kategorie */
+  .filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .chip.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .punkt { width: 8px; height: 8px; border-radius: 50%; }
+  .punkt.uni { background: var(--uni-fg); }
+  .punkt.privat { background: var(--privat-fg); }
+  .punkt.arbeit { background: var(--arbeit-fg); }
+
+  /* Die Liste */
+  ul {
+    list-style: none; margin: 0; padding: 0; overflow: hidden;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  }
+  li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  li.wichtig { box-shadow: inset 4px 0 0 var(--star); }
+  li > input[type=checkbox] { width: 20px; height: 20px; padding: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
+  .label { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; border-radius: 6px; }
+  .label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  li.done .label { color: var(--muted); }
+  li.done .titel { text-decoration: line-through; }
+
+  /* Zeile unter einem Eintrag: Kategorie und Erinnerung */
+  .meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; font-size: 13px; color: var(--muted); }
+  .tag { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .tag.uni { background: var(--uni-bg); color: var(--uni-fg); }
+  .tag.privat { background: var(--privat-bg); color: var(--privat-fg); }
+  .tag.arbeit { background: var(--arbeit-bg); color: var(--arbeit-fg); }
+  .zeit { display: inline-flex; align-items: center; gap: 4px; }
+  .zeit svg { width: 13px; height: 13px; flex: none; }
+  .zeit.faellig { color: var(--danger); font-weight: 600; }
+  .kal {
+    border: 1px solid var(--line); background: transparent; color: var(--accent);
+    font: inherit; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; cursor: pointer;
+  }
+  .kal:hover { border-color: var(--accent); }
+
+  /* Stern zum Markieren als wichtig */
+  .stern { border: 0; background: transparent; color: var(--muted); padding: 2px; cursor: pointer; display: flex; }
+  .stern svg { width: 20px; height: 20px; }
+  .stern.an { color: var(--star); }
+  .stern.an svg { fill: currentColor; }
+
+  .del {
+    border: 0; background: transparent; color: var(--muted);
+    font-size: 22px; line-height: 1; padding: 0 4px; cursor: pointer;
+  }
+  .del:hover { color: var(--danger); }
+
+  /* Bearbeiten-Modus eines Eintrags */
+  li.bearbeiten { display: block; background: var(--bg); }
+  .edit { display: flex; flex-direction: column; gap: 10px; }
+  .edit .reihe { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .edit input, .edit select { padding: 8px 10px; font-size: 15px; }
+  .edit .edit-text { width: 100%; }
+  .edit .knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
+  .btn { border-radius: 8px; padding: 8px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn.primaer { border: 0; background: var(--accent); color: var(--on-accent); }
+  .btn.sekundaer { border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  .link { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0; }
+
+  .empty { text-align: center; color: var(--muted); padding: 32px 16px; margin: 0; }
+  .footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px; color: var(--muted); font-size: 14px;
+  }
+  .clear { border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 14px; cursor: pointer; padding: 4px; }
+
+  /* Hinweis-Kästchen oben, wenn eine Erinnerung fällig ist */
+  #hinweise {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    width: min(528px, calc(100% - 32px)); z-index: 10;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .hinweis {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--card); color: var(--text); border-left: 4px solid var(--accent);
+    border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  }
+  .hinweis .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .hinweis strong { display: block; font-size: 13px; color: var(--accent); }
+  .hinweis button {
+    border: 0; background: var(--accent); color: var(--on-accent); cursor: pointer;
+    font: inherit; font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+  }
+
+  [hidden] { display: none !important; }
+
+  /* iPhone: Felder brauchen mindestens 16px Schrift, sonst zoomt Safari beim Antippen hinein */
+  @media (max-width: 600px) {
+    input, select { font-size: 16px !important; }
+  }
+</style>
+</head>
+
+<!-- ============================================================
+     TEIL 2: HTML = der INHALT (was auf der Seite steht)
+     ============================================================ -->
+<body>
+<div id="hinweise" aria-live="polite"></div>
+
+<main>
+  <h1>Meine Listen</h1>
+
+  <div class="tabs">
+    <button class="tab" data-list="todos">To-dos<span class="count" id="count-todos"></span></button>
+    <button class="tab" data-list="einkauf">Einkaufsliste<span class="count" id="count-einkauf"></span></button>
+  </div>
+
+  <form id="form">
+    <div class="zeile">
+      <input id="text" autocomplete="off">
+      <button class="add" type="submit">Hinzufügen</button>
+    </div>
+
+    <!-- Nur bei To-dos sichtbar -->
+    <div class="optionen" id="optionen">
+      <label class="option">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        Erinnerung
+        <input type="datetime-local" id="zeit">
+      </label>
+      <label class="option">
+        Kategorie
+        <select id="kategorie">
+          <option value="">Keine</option>
+          <option value="uni">Uni</option>
+          <option value="privat">Privat</option>
+          <option value="arbeit">Arbeit</option>
+        </select>
+      </label>
+      <label class="option">
+        <input type="checkbox" id="wichtig">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>
+        Wichtig
+      </label>
+    </div>
+  </form>
+
+  <!-- Filter nach Kategorie (nur bei To-dos) -->
+  <div class="filter" id="filter">
+    <button class="chip" data-filter="alle">Alle</button>
+    <button class="chip" data-filter="uni"><span class="punkt uni"></span>Uni</button>
+    <button class="chip" data-filter="privat"><span class="punkt privat"></span>Privat</button>
+    <button class="chip" data-filter="arbeit"><span class="punkt arbeit"></span>Arbeit</button>
+  </div>
+
+  <ul id="liste"></ul>
+  <p class="empty" id="leer"></p>
+
+  <div class="footer" id="footer">
+    <span id="status"></span>
+    <button class="clear" id="aufraeumen">Erledigte entfernen</button>
+  </div>
+</main>
+
+<!-- ============================================================
+     TEIL 3: JavaScript = das VERHALTEN (was passiert, wenn man klickt)
+     ============================================================ -->
+<script>
+  // --- Daten: zwei getrennte Listen, im Browser gespeichert ---
+  const SPEICHER = "meine-listen-v1";
+  let daten = { todos: [], einkauf: [], aktiv: "todos", filter: "alle" };
+
+  try {
+    const gespeichert = JSON.parse(localStorage.getItem(SPEICHER));
+    if (gespeichert) daten = Object.assign(daten, gespeichert);
+  } catch (e) { /* Kein Speicher verfügbar: App startet leer */ }
+
+  // Das Mengenfeld gibt es nicht mehr: alte Mengen an den Text anhängen, damit nichts verloren geht
+  for (const e of daten.einkauf) {
+    if (e.menge) e.text = e.text + " (" + e.menge + ")";
+    delete e.menge;
+  }
+
+  function speichern() {
+    try { localStorage.setItem(SPEICHER, JSON.stringify(daten)); } catch (e) {}
+  }
+
+  // Welcher Eintrag gerade bearbeitet wird (null = keiner)
+  let bearbeiteId = null;
+
+  // Texte, die sich je nach Liste ändern
+  const texte = {
+    todos:   { platzhalter: "Neues To-do",      leer: "Keine To-dos. Alles erledigt!" },
+    einkauf: { platzhalter: "Was brauchst du?", leer: "Die Einkaufsliste ist leer." }
+  };
+  const KATEGORIEN = { uni: "Uni", privat: "Privat", arbeit: "Arbeit" };
+
+  // Kleine Symbole
+  const GLOCKE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+  const STERN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>';
+
+  const el = (id) => document.getElementById(id);
+  const offen = (liste) => liste.filter((x) => !x.done).length;
+
+  // Datum hübsch anzeigen, z. B. "Mo., 10. Nov., 14:30"
+  const zeitText = (wert) => new Date(wert).toLocaleString("de-DE", {
+    weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+  });
+  const istFaellig = (e) => e.erinnerung && !e.done && new Date(e.erinnerung) <= new Date();
+
+  // Welche Einträge gerade zu sehen sind (Filter gilt nur für To-dos)
+  function sichtbareEintraege() {
+    const liste = daten[daten.aktiv];
+    if (daten.aktiv !== "todos" || daten.filter === "alle") return liste;
+    return liste.filter((x) => x.kategorie === daten.filter);
+  }
+
+  // Auswahlfeld für Kategorien (wird beim Bearbeiten gebraucht)
+  function kategorieAuswahl(wert) {
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", "Kategorie");
+    for (const [schluessel, name] of [["", "Keine Kategorie"], ...Object.entries(KATEGORIEN)]) {
+      const o = document.createElement("option");
+      o.value = schluessel;
+      o.textContent = name;
+      select.append(o);
+    }
+    select.value = wert || "";
+    return select;
+  }
+
+  // Mitteilungen erlauben lassen (fragt nur beim ersten Mal)
+  function mitteilungenErlauben() {
+    if ("Notification" in window && Notification.permission === "default") {
+      try { Notification.requestPermission(); } catch (e) {}
+    }
+  }
+
+  // --- Alles neu auf den Bildschirm zeichnen ---
+  function zeichnen() {
+    const name = daten.aktiv;
+    const istTodos = name === "todos";
+
+    // Reiter markieren und Zähler aktualisieren
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.list === name));
+    el("count-todos").textContent = offen(daten.todos) || "";
+    el("count-einkauf").textContent = offen(daten.einkauf) || "";
+
+    // Eingabe anpassen: Optionen und Filter nur bei To-dos
+    el("text").placeholder = texte[name].platzhalter;
+    el("optionen").hidden = !istTodos;
+    el("filter").hidden = !istTodos;
+    document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c.dataset.filter === daten.filter));
+
+    // Einträge anzeigen: offene oben, darin wichtige zuerst, erledigte unten
+    const sichtbar = sichtbareEintraege();
+    const sortiert = [...sichtbar].sort((a, b) =>
+      (a.done - b.done) || ((b.wichtig ? 1 : 0) - (a.wichtig ? 1 : 0))
+    );
+
+    const ul = el("liste");
+    ul.innerHTML = "";
+    for (const eintrag of sortiert) {
+      ul.append(eintrag.id === bearbeiteId ? bearbeitenZeile(eintrag, name) : normaleZeile(eintrag, name));
+    }
+
+    // Leere Liste: Hinweis statt Liste zeigen
+    const istLeer = sichtbar.length === 0;
+    ul.hidden = istLeer;
+    el("leer").hidden = !istLeer;
+    el("leer").textContent = (istTodos && daten.filter !== "alle")
+      ? "Keine To-dos in „" + KATEGORIEN[daten.filter] + "“."
+      : texte[name].leer;
+
+    const erledigt = sichtbar.length - offen(sichtbar);
+    el("footer").hidden = istLeer;
+    el("status").textContent = offen(sichtbar) + " offen · " + erledigt + " erledigt";
+    el("aufraeumen").hidden = erledigt === 0;
+  }
+
+  // Ein Eintrag in der normalen Ansicht
+  function normaleZeile(eintrag, name) {
+    const li = document.createElement("li");
+    if (eintrag.done) li.classList.add("done");
+    if (eintrag.wichtig && !eintrag.done) li.classList.add("wichtig");
+
+    const haken = document.createElement("input");
+    haken.type = "checkbox";
+    haken.checked = eintrag.done;
+    haken.setAttribute("aria-label", "Erledigt: " + eintrag.text);
+    haken.addEventListener("change", () => {
+      eintrag.done = haken.checked;
+      speichern();
+      zeichnen();
+    });
+
+    // Text (anklicken = bearbeiten)
+    const label = document.createElement("div");
+    label.className = "label";
+    label.tabIndex = 0;
+    label.title = "Zum Bearbeiten anklicken";
+    const bearbeitenStarten = () => {
+      bearbeiteId = eintrag.id;
+      zeichnen();
+      const feld = document.querySelector(".edit-text");
+      if (feld) { feld.focus(); feld.select(); }
+    };
+    label.addEventListener("click", (ev) => { if (!ev.target.closest("button")) bearbeitenStarten(); });
+    label.addEventListener("keydown", (ev) => { if (ev.key === "Enter") bearbeitenStarten(); });
+
+    const titel = document.createElement("span");
+    titel.className = "titel";
+    titel.textContent = eintrag.text;
+    label.append(titel);
+
+    // Zeile darunter: Kategorie und Erinnerung
+    if (eintrag.kategorie || eintrag.erinnerung) {
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      if (eintrag.kategorie && KATEGORIEN[eintrag.kategorie]) {
+        const tag = document.createElement("span");
+        tag.className = "tag " + eintrag.kategorie;
+        tag.textContent = KATEGORIEN[eintrag.kategorie];
+        meta.append(tag);
+      }
+
+      if (eintrag.erinnerung) {
+        const faellig = istFaellig(eintrag);
+        const zeit = document.createElement("span");
+        zeit.className = "zeit" + (faellig ? " faellig" : "");
+        zeit.innerHTML = GLOCKE;
+        zeit.append(zeitText(eintrag.erinnerung) + (faellig ? " · fällig" : ""));
+        meta.append(zeit);
+
+        if (!eintrag.done) {
+          const kal = document.createElement("button");
+          kal.className = "kal";
+          kal.textContent = "In Kalender";
+          kal.title = "Als Termin mit Erinnerung in deinen Kalender übernehmen";
+          kal.addEventListener("click", () => kalenderDatei(eintrag));
+          meta.append(kal);
+        }
+      }
+      label.append(meta);
+    }
+
+    li.append(haken, label);
+
+    // Stern (nur bei To-dos)
+    if (name === "todos") {
+      const stern = document.createElement("button");
+      stern.className = "stern" + (eintrag.wichtig ? " an" : "");
+      stern.innerHTML = STERN;
+      stern.title = eintrag.wichtig ? "Nicht mehr wichtig" : "Als wichtig markieren";
+      stern.setAttribute("aria-label", "Wichtig: " + eintrag.text);
+      stern.setAttribute("aria-pressed", eintrag.wichtig ? "true" : "false");
+      stern.addEventListener("click", () => {
+        eintrag.wichtig = !eintrag.wichtig;
+        speichern();
+        zeichnen();
+      });
+      li.append(stern);
+    }
+
+    const loeschen = document.createElement("button");
+    loeschen.className = "del";
+    loeschen.textContent = "×";
+    loeschen.title = "Löschen";
+    loeschen.setAttribute("aria-label", "Löschen: " + eintrag.text);
+    loeschen.addEventListener("click", () => {
+      daten[name] = daten[name].filter((x) => x.id !== eintrag.id);
+      speichern();
+      zeichnen();
+    });
+    li.append(loeschen);
+
+    return li;
+  }
+
+  // Ein Eintrag im Bearbeiten-Modus
+  function bearbeitenZeile(eintrag, name) {
+    const li = document.createElement("li");
+    li.className = "bearbeiten";
+
+    const form = document.createElement("form");
+    form.className = "edit";
+
+    const text = document.createElement("input");
+    text.className = "edit-text";
+    text.value = eintrag.text;
+    text.setAttribute("aria-label", "Text");
+    form.append(text);
+
+    let zeit, kategorie, wichtig;
+
+    // Zusatzfelder gibt es nur bei To-dos
+    if (name === "todos") {
+      const reihe = document.createElement("div");
+      reihe.className = "reihe";
+
+      // Erinnerung
+      const zeitLabel = document.createElement("label");
+      zeitLabel.className = "option";
+      zeitLabel.innerHTML = GLOCKE;
+      zeit = document.createElement("input");
+      zeit.type = "datetime-local";
+      zeit.value = eintrag.erinnerung || "";
+      zeitLabel.append("Erinnerung", zeit);
+      const keine = document.createElement("button");
+      keine.type = "button";
+      keine.className = "link";
+      keine.textContent = "entfernen";
+      keine.addEventListener("click", () => { zeit.value = ""; });
+      zeitLabel.append(keine);
+
+      // Kategorie
+      kategorie = kategorieAuswahl(eintrag.kategorie);
+
+      // Wichtig
+      const wichtigLabel = document.createElement("label");
+      wichtigLabel.className = "option";
+      wichtig = document.createElement("input");
+      wichtig.type = "checkbox";
+      wichtig.checked = !!eintrag.wichtig;
+      wichtigLabel.append(wichtig, "Wichtig");
+
+      reihe.append(zeitLabel, kategorie, wichtigLabel);
+      form.append(reihe);
+    }
+
+    const knoepfe = document.createElement("div");
+    knoepfe.className = "knoepfe";
+    const abbrechen = document.createElement("button");
+    abbrechen.type = "button";
+    abbrechen.className = "btn sekundaer";
+    abbrechen.textContent = "Abbrechen";
+    const sichern = document.createElement("button");
+    sichern.type = "submit";
+    sichern.className = "btn primaer";
+    sichern.textContent = "Speichern";
+    knoepfe.append(abbrechen, sichern);
+    form.append(knoepfe);
+
+    const beenden = () => { bearbeiteId = null; zeichnen(); };
+    abbrechen.addEventListener("click", beenden);
+    form.addEventListener("keydown", (ev) => { if (ev.key === "Escape") beenden(); });
+
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const neuerText = text.value.trim();
+      if (!neuerText) { text.focus(); return; }
+      eintrag.text = neuerText;
+
+      if (name === "todos") {
+        const neueZeit = zeit.value;
+        if (neueZeit !== (eintrag.erinnerung || "")) {
+          if (neueZeit) { eintrag.erinnerung = neueZeit; mitteilungenErlauben(); }
+          else delete eintrag.erinnerung;
+          eintrag.erinnert = false; // neue Zeit = neue Erinnerung
+        }
+        eintrag.kategorie = kategorie.value;
+        eintrag.wichtig = wichtig.checked;
+      }
+
+      bearbeiteId = null;
+      speichern();
+      zeichnen();
+      pruefen();
+    });
+
+    li.append(form);
+    return li;
+  }
+
+  // --- Erinnerungen ---
+
+  // Hinweis-Kästchen oben einblenden
+  function hinweisZeigen(text) {
+    const box = document.createElement("div");
+    box.className = "hinweis";
+    box.setAttribute("role", "alert");
+
+    const inhalt = document.createElement("div");
+    inhalt.className = "text";
+    const ueberschrift = document.createElement("strong");
+    ueberschrift.textContent = "Erinnerung";
+    inhalt.append(ueberschrift, text);
+
+    const ok = document.createElement("button");
+    ok.textContent = "OK";
+    ok.addEventListener("click", () => box.remove());
+
+    box.append(inhalt, ok);
+    el("hinweise").append(box);
+  }
+
+  // Erinnerung auslösen: Mitteilung (wenn erlaubt) und Hinweis in der App
+  async function erinnern(eintrag) {
+    hinweisZeigen(eintrag.text);
+    try {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      // Auf dem iPhone gehen Mitteilungen nur über den Service Worker
+      const reg = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      if (reg) reg.showNotification("Erinnerung", { body: eintrag.text, icon: "icon-192.png" });
+      else new Notification("Erinnerung", { body: eintrag.text });
+    } catch (e) { /* Mitteilungen gehen hier nicht: der Hinweis in der App reicht */ }
+  }
+
+  // Alle 10 Sekunden schauen, ob eine Erinnerung fällig ist
+  function pruefen() {
+    let neu = false;
+    for (const e of daten.todos) {
+      if (istFaellig(e) && !e.erinnert) {
+        e.erinnert = true;
+        erinnern(e);
+        neu = true;
+      }
+    }
+    if (neu) {
+      speichern();
+      if (bearbeiteId === null) zeichnen(); // Beim Bearbeiten nicht dazwischenfunken
+    }
+  }
+
+  // Termin-Datei (.ics) erzeugen: Kalender öffnet sie und erinnert dich auch,
+  // wenn diese App geschlossen ist (und auf dem iPhone, falls iCloud an ist)
+  function kalenderDatei(eintrag) {
+    const start = new Date(eintrag.erinnerung);
+    const ende = new Date(start.getTime() + 15 * 60 * 1000);
+    const format = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const sicher = (t) => t.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Meine Listen//DE",
+      "BEGIN:VEVENT",
+      "UID:" + eintrag.id + "@meine-listen",
+      "DTSTAMP:" + format(new Date()),
+      "DTSTART:" + format(start),
+      "DTEND:" + format(ende),
+      "SUMMARY:" + sicher(eintrag.text),
+      "BEGIN:VALARM",
+      "ACTION:DISPLAY",
+      "DESCRIPTION:" + sicher(eintrag.text),
+      "TRIGGER:PT0S",
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+    link.download = "Erinnerung.ics";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  // --- Reiter wechseln ---
+  document.querySelectorAll(".tab").forEach((t) => {
+    t.addEventListener("click", () => {
+      daten.aktiv = t.dataset.list;
+      bearbeiteId = null;
+      speichern();
+      zeichnen();
+      el("text").focus();
+    });
+  });
+
+  // --- Filter wählen ---
+  document.querySelectorAll(".chip").forEach((c) => {
+    c.addEventListener("click", () => {
+      daten.filter = c.dataset.filter;
+      // Neue To-dos bekommen automatisch die gefilterte Kategorie
+      el("kategorie").value = daten.filter === "alle" ? "" : daten.filter;
+      bearbeiteId = null;
+      speichern();
+      zeichnen();
+    });
+  });
+
+  // --- Neuen Eintrag hinzufügen (Knopf oder Enter-Taste) ---
+  el("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = el("text").value.trim();
+    if (!text) return;
+
+    const eintrag = { id: Date.now() + "-" + Math.random().toString(36).slice(2), text: text, done: false };
+
+    if (daten.aktiv === "todos") {
+      if (el("zeit").value) {
+        eintrag.erinnerung = el("zeit").value;
+        mitteilungenErlauben();
+      }
+      if (el("kategorie").value) eintrag.kategorie = el("kategorie").value;
+      if (el("wichtig").checked) eintrag.wichtig = true;
+
+      // Passt das neue To-do nicht zum Filter? Dann "Alle" zeigen, damit es sichtbar ist
+      if (daten.filter !== "alle" && eintrag.kategorie !== daten.filter) daten.filter = "alle";
+    }
+
+    daten[daten.aktiv].push(eintrag);
+    el("text").value = "";
+    el("zeit").value = "";
+    el("wichtig").checked = false;
+    el("kategorie").value = daten.filter === "alle" ? "" : daten.filter;
+    speichern();
+    zeichnen();
+    pruefen();
+    el("text").focus();
+  });
+
+  // --- Erledigte Einträge entfernen (nur die gerade sichtbaren) ---
+  el("aufraeumen").addEventListener("click", () => {
+    const weg = new Set(sichtbareEintraege().filter((x) => x.done).map((x) => x.id));
+    daten[daten.aktiv] = daten[daten.aktiv].filter((x) => !weg.has(x.id));
+    speichern();
+    zeichnen();
+  });
+
+  // Service Worker anmelden: App startet auch ohne Internet (nur wenn sie im Internet liegt)
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  // Start
+  el("kategorie").value = daten.filter === "alle" ? "" : daten.filter;
+  zeichnen();
+  pruefen();                       // Verpasste Erinnerungen beim Öffnen zeigen
+  setInterval(pruefen, 10 * 1000); // Danach alle 10 Sekunden prüfen
+</script>
+</body>
+</html>
